@@ -58,11 +58,39 @@ fi
 
 # Build Flutter web app
 echo "Building Flutter web app..."
-flutter build web --release --base-href /
+flutter build web --release --base-href / --verbose
+
+# Check if build was successful
+if [ $? -eq 0 ]; then
+    echo "Build successful!"
+else
+    echo "Build failed!"
+    exit 1
+fi
 
 # Verify build output
 echo "Build output verification:"
-ls -la build/
-ls -la build/web/
+if [ -d "build" ]; then
+    echo "build/ directory exists"
+    ls -la build/
+    if [ -d "build/web" ]; then
+        echo "build/web/ directory exists"
+        ls -la build/web/
+        if [ -f "build/web/index.html" ]; then
+            echo "index.html exists"
+            echo "First 10 lines of index.html:"
+            head -10 build/web/index.html
+        else
+            echo "ERROR: index.html not found!"
+            exit 1
+        fi
+    else
+        echo "ERROR: build/web/ directory not found!"
+        exit 1
+    fi
+else
+    echo "ERROR: build/ directory not found!"
+    exit 1
+fi
 
-echo "Build completed!"
+echo "Build completed successfully!"
