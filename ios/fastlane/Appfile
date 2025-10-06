@@ -1,0 +1,7 @@
+app_identifier "com.example.savvyBee" # TODO: replace with your bundle id
+apple_id "your-apple-id@example.com"  # TODO: replace with your Apple ID email
+
+# Optional teams (if applicable)
+# itc_team_id "123456789"              # App Store Connect Team ID
+# team_id "ABCDE12345"                 # Developer Portal Team ID
+

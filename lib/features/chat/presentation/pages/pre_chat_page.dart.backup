@@ -1,0 +1,1434 @@
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import '../../../../shared/services/temp_memory_service.dart';
+import '../../../../shared/services/groq_ai_service.dart';
+
+class PreChatPage extends ConsumerStatefulWidget {
+  const PreChatPage({super.key});
+
+  @override
+  ConsumerState<PreChatPage> createState() => _PreChatPageState();
+}
+
+// UPDATE the service declaration:
+class _PreChatPageState extends ConsumerState<PreChatPage> {
+  final Set<String> _selectedFeatures = <String>{};
+  int _selectedTabIndex = 0;
+  final TempMemoryService _memoryService = TempMemoryService();
+  String _selectedTimeRange = '1M';
+
+  @override
+  void initState() {
+    super.initState();
+    // Load selected features from onboarding (for demo purposes)
+    _selectedFeatures.addAll([
+      'Dark mode',
+      'Push notifications',
+      'Camera access',
+      'File uploads',
+      'Analytics insights',
+    ]);
+  }
+
+  Future<void> _requestPermission(String feature) async {
+    switch (feature) {
+      case 'Camera access':
+        _showPermissionResult('Camera access ready! 📸 (iOS permission will be requested when needed)');
+        break;
+      case 'Push notifications':
+        _showPermissionResult('Notifications ready! 🔔 (iOS permission will be requested when needed)');
+        break;
+      case 'File uploads':
+        _showPermissionResult('File uploads ready! 📁');
+        break;
+      case 'Analytics insights':
+        _showPermissionResult('Analytics enabled! 📊');
+        break;
+    }
+  }
+
+  void _showPermissionResult(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: const Color(0xFFFFD700),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Scaffold(
+      backgroundColor: colorScheme.background,
+      body: SafeArea(
+        child: SingleChildScrollView(
+        child: Column(
+          children: [
+            // Header
+            _buildHeader(),
+              
+              // Navigation Tabs
+              _buildNavigationTabs(),
+              
+              // Dashboard Content based on selected tab
+              _selectedTabIndex == 0 ? _buildOverviewTab() : _buildQuickActionsTab(),
+              
+              // Chat History Section
+              _buildChatHistorySection(),
+            
+                      // Main CTA Button
+          _buildMainCTA(),
+          
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        children: [
+          // Bee Icon
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFD700),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFFFD700).withOpacity(0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.emoji_nature,
+              size: 24,
+              color: Colors.white,
+            ),
+          ),
+          
+          const SizedBox(width: 16),
+          
+          // Title
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'SavvyBee',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: colorScheme.onSurface,
+                letterSpacing: -0.5,
+              ),
+                ),
+                Text(
+                  'Your AI Financial Coach',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // File Upload Button (Temporarily Disabled)
+          // Container(
+          //   width: 40,
+          //   height: 40,
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFD700),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFFFD700).withValues(alpha: 0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: IconButton(
+              onPressed: () async {
+                final success = await _dataInputService.showManualDataInput(context);
+                if (success) {
+                  setState(() {}); // Refresh dashboard
+                }
+              },
+              icon: const Icon(
+                Icons.edit_note,
+                size: 20,
+                color: Colors.black87,
+              ),
+              padding: EdgeInsets.zero,
+            ),
+          ),
+          
+          // const SizedBox(width: 12),
+          
+          // Profile Icon
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceVariant,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: colorScheme.onSurface.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Center(
+              child: Icon(
+                Icons.person,
+                size: 24,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNavigationTabs() {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Row(
+        children: [
+          Expanded(
+      child: GestureDetector(
+              onTap: () => setState(() => _selectedTabIndex = 0),
+        child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+                  color: _selectedTabIndex == 0 ? colorScheme.surfaceVariant : Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                      color: colorScheme.onSurface.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+                child: Center(
+                child: Text(
+                    'Overview',
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: _selectedTabIndex == 0 ? colorScheme.onSurface : colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _selectedTabIndex = 1),
+                child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  color: _selectedTabIndex == 1 ? colorScheme.surfaceVariant : Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: colorScheme.onSurface.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Text(
+                    'Quick Actions',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: _selectedTabIndex == 1 ? colorScheme.onSurface : colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOverviewTab() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final hasData = _memoryService.financialData['income'] > 0;
+    
+    if (!hasData) {
+      return Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Financial Overview',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: colorScheme.onSurface,
+                letterSpacing: -0.3,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(40),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: colorScheme.onSurface.withOpacity(0.05),
+                    blurRadius: 15,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.upload_file,
+                    size: 48,
+                    color: const Color(0xFFFFD700),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Upload Your Statement! 📊',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Start a chat and upload a financial statement to see your personalized dashboard here',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Financial Overview',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: colorScheme.onSurface,
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 20),
+          
+          // Summary Cards Row
+          Row(
+            children: [
+              Expanded(
+                child: _buildSummaryCard(
+                  'Monthly Income',
+                  '₦${_formatNumber(_memoryService.financialData['income'])}',
+                  Icons.trending_up,
+                  const Color(0xFF4CAF50),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildSummaryCard(
+                  'Total Expenses',
+                  '₦${_formatNumber(_memoryService.financialData['expenses'])}',
+                  Icons.trending_down,
+                  const Color(0xFFE91E63),
+                ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // Savings Card
+          _buildSummaryCard(
+            'Monthly Savings',
+            '₦${_formatNumber(_memoryService.financialData['savings'])}',
+            Icons.savings,
+            const Color(0xFFFF9800),
+            fullWidth: true,
+          ),
+          
+          const SizedBox(height: 20),
+          
+          // Spending Breakdown
+          _buildSpendingBreakdownCard(colorScheme),
+          
+          const SizedBox(height: 20),
+          
+          // Financial Health Score
+          _buildFinancialHealthCard(colorScheme),
+          
+          const SizedBox(height: 20),
+          
+          // Available to Spend Card
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: colorScheme.onSurface.withOpacity(0.05),
+                  blurRadius: 15,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      'Available to spend',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF4CAF50),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.account_balance_wallet,
+                            size: 16,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Deposit',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  hasData ? '₦${(_memoryService.financialData['savings'] / 1000).toStringAsFixed(0)}K' : '₦0K',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    color: colorScheme.onSurface,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Progress Bar
+                Container(
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceVariant,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: hasData
+                    ? FractionallySizedBox(
+                        alignment: Alignment.centerLeft,
+                        widthFactor: _memoryService.financialData['income'] > 0 
+                          ? (_memoryService.financialData['expenses'] / _memoryService.financialData['income']).clamp(0.0, 1.0)
+                          : 0.0,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF44336),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                      )
+                    : Container(
+                        decoration: BoxDecoration(
+                          color: colorScheme.surfaceVariant,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  hasData 
+                    ? '₦${(_memoryService.financialData['expenses'] / 1000).toStringAsFixed(0)}K of ₦${(_memoryService.financialData['income'] / 1000).toStringAsFixed(0)}K spent'
+                    : 'Upload statement for AI analysis',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.2),
+          
+          const SizedBox(height: 20),
+          
+          // Expense by Card
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: colorScheme.onSurface.withOpacity(0.05),
+                  blurRadius: 15,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      'Expense by',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surfaceVariant,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Monthly',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: colorScheme.onSurface,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.keyboard_arrow_down,
+                            size: 16,
+                            color: colorScheme.onSurface,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Viewing last 7 months chart',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  hasData ? '₦${(_memoryService.financialData['expenses'] / 1000).toStringAsFixed(0)}K' : '₦0K',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    color: colorScheme.onSurface,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                // Time Range Selector
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _buildTimeRangeButton('1D', _selectedTimeRange == '1D'),
+                    _buildTimeRangeButton('1W', _selectedTimeRange == '1W'),
+                    _buildTimeRangeButton('1M', _selectedTimeRange == '1M'),
+                    _buildTimeRangeButton('3M', _selectedTimeRange == '3M'),
+                    _buildTimeRangeButton('1Y', _selectedTimeRange == '1Y'),
+                    _buildTimeRangeButton('ALL', _selectedTimeRange == 'ALL'),
+                  ],
+                ),
+              ],
+            ),
+          ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2),
+          
+          const SizedBox(height: 20),
+          
+          // Spending Breakdown Card
+  
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActionsTab() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final quickActions = [
+      {
+        'title': 'Ask about Budgeting',
+        'icon': Icons.account_balance_wallet,
+        'color': const Color(0xFF4CAF50),
+        'feature': 'Analytics insights',
+      },
+      {
+        'title': 'Get Financial Advice',
+        'icon': Icons.trending_up,
+        'color': const Color(0xFF2196F3),
+        'feature': 'Analytics insights',
+      },
+      {
+        'title': 'Track Your Goals',
+        'icon': Icons.flag,
+        'color': const Color(0xFFFF9800),
+        'feature': 'Analytics insights',
+      },
+      {
+        'title': 'Investment Tips',
+        'icon': Icons.show_chart,
+        'color': const Color(0xFF9C27B0),
+        'feature': 'Analytics insights',
+      },
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+          Text(
+            'Quick Actions',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: colorScheme.onSurface,
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 20),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              childAspectRatio: 1.2,
+            ),
+            itemCount: quickActions.length,
+            itemBuilder: (context, index) {
+              final action = quickActions[index];
+              return GestureDetector(
+                  onTap: () {
+                    _requestPermission(action['feature'] as String);
+                    context.go('/chat/main');
+                  },
+                  child: Container(
+                  padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                        color: colorScheme.onSurface.withOpacity(0.05),
+                        blurRadius: 15,
+                        offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                        width: 40,
+                        height: 40,
+                          decoration: BoxDecoration(
+                            color: action['color'] as Color,
+                          borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            action['icon'] as IconData,
+                          size: 20,
+                            color: Colors.white,
+                          ),
+                        ),
+                      const SizedBox(height: 16),
+                        Text(
+                          action['title'] as String,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ).animate(delay: Duration(milliseconds: 200 + (index * 100))).fadeIn().scale(begin: const Offset(0.8, 0.8));
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChatHistorySection() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final hasData = _memoryService.financialData['income'] > 0;
+    
+    if (!hasData) {
+      return Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Recent Chats',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: colorScheme.onSurface,
+                letterSpacing: -0.3,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(40),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: colorScheme.onSurface.withOpacity(0.05),
+                    blurRadius: 15,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.chat_bubble_outline,
+                    size: 48,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Ready to chat with AI! 🤖',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Upload a financial statement to get personalized AI insights and start your financial coaching journey',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    // For now, show a single chat since we're in development
+    // In production, this would come from actual chat history
+    final recentChats = hasData ? [
+      {
+        'title': 'Financial Analysis Chat',
+        'lastMessage': 'Your statement has been analyzed! Ask me anything about your finances.',
+        'time': 'Just now',
+        'unread': true,
+      },
+    ] : [];
+
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Recent Chats',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: colorScheme.onSurface,
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 16),
+          ...recentChats.map((chat) => _buildChatHistoryItem(chat)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChatHistoryItem(Map<String, dynamic> chat) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.onSurface.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFD700).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Icon(
+              Icons.chat_bubble_outline,
+              size: 24,
+              color: const Color(0xFFFFD700),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        chat['title'] as String,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
+                    ),
+                    if (chat['unread'] as bool)
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFFFD700),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  chat['lastMessage'] as String,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  chat['time'] as String,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn().slideX(begin: 0.2);
+  }
+
+  Widget _buildChartPoint(String label, double height, Color color) {
+    return Column(
+      children: [
+        Container(
+          width: 4,
+          height: 40 * height,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w500,
+            color: Colors.white.withOpacity(0.8),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTimeRangeButton(String label, bool isSelected) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedTimeRange = label;
+        });
+        // Here you would filter data based on time range
+        // For now, we'll just update the UI
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF4CAF50) : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF4CAF50) : colorScheme.surfaceVariant,
+            width: 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: isSelected ? Colors.white : colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSpendingBreakdownCard() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final categories = _memoryService.financialData['categories'] as Map<String, dynamic>;
+    final totalExpenses = _memoryService.financialData['expenses'];
+    
+    if (totalExpenses == 0) return const SizedBox.shrink();
+    
+    // Sort categories by amount
+    var sortedCategories = categories.entries.toList();
+    sortedCategories.sort((a, b) => b.value.compareTo(a.value));
+    
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.onSurface.withOpacity(0.05),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Spending Breakdown',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: colorScheme.onSurface,
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 16),
+          ...sortedCategories.map((entry) {
+            if (entry.value == 0) return const SizedBox.shrink();
+            
+            final percentage = (entry.value / totalExpenses) * 100;
+            final color = _getCategoryColor(entry.key);
+            
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                children: [
+                  Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      _getCategoryDisplayName(entry.key),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '₦${(entry.value / 1000).toStringAsFixed(0)}K',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${percentage.toStringAsFixed(1)}%',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.2);
+  }
+
+  Color _getCategoryColor(String category) {
+    switch (category.toLowerCase()) {
+      case 'food':
+        return const Color(0xFFFF9800);
+      case 'transport':
+        return const Color(0xFF2196F3);
+      case 'data':
+        return const Color(0xFF9C27B0);
+      case 'entertainment':
+        return const Color(0xFFE91E63);
+      case 'utilities':
+        return const Color(0xFF4CAF50);
+      default:
+        return const Color(0xFF607D8B);
+    }
+  }
+
+  String _getCategoryDisplayName(String category) {
+    switch (category.toLowerCase()) {
+      case 'food':
+        return 'Food & Dining';
+      case 'transport':
+        return 'Transportation';
+      case 'data':
+        return 'Data & Internet';
+      case 'entertainment':
+        return 'Entertainment';
+      case 'utilities':
+        return 'Utilities';
+      default:
+        return category;
+    }
+  }
+  
+  String _formatNumber(num value) {
+    if (value >= 1000000) {
+      return '${(value / 1000000).toStringAsFixed(1)}M';
+    } else if (value >= 1000) {
+      return '${(value / 1000).toStringAsFixed(1)}K';
+    }
+    return value.toStringAsFixed(0);
+  }
+  
+  Widget _buildSummaryCard(String title, String value, IconData icon, Color color, {bool fullWidth = false}) {
+    return Container(
+      width: fullWidth ? double.infinity : null,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: color, size: 20),
+              ),
+              const Spacer(),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF666666),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildSpendingBreakdownCard(ColorScheme colorScheme) {
+    final categories = _memoryService.financialData['categories'] as Map<String, dynamic>? ?? {};
+    if (categories.isEmpty) return const SizedBox.shrink();
+    
+    final sortedCategories = categories.entries.toList()
+      ..sort((a, b) => (b.value as num).compareTo(a.value as num));
+    
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.pie_chart,
+                color: const Color(0xFFFFD700),
+                size: 24,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Spending Breakdown',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ...sortedCategories.take(5).map((entry) => _buildCategoryRow(
+            entry.key,
+            entry.value as num,
+            _memoryService.financialData['expenses'] as num,
+          )),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildCategoryRow(String category, num amount, num totalExpenses) {
+    final percentage = (amount / totalExpenses * 100);
+    final color = _getCategoryColor(category);
+    
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 12,
+            height: 12,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              _getCategoryDisplayName(category),
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Text(
+            '₦${_formatNumber(amount)}',
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '${percentage.toStringAsFixed(1)}%',
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF666666),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildFinancialHealthCard(ColorScheme colorScheme) {
+    final income = _memoryService.financialData['income'] as num;
+    final expenses = _memoryService.financialData['expenses'] as num;
+    final savings = _memoryService.financialData['savings'] as num;
+    
+    final savingsRate = income > 0 ? (savings / income * 100) : 0;
+    final expenseRatio = income > 0 ? (expenses / income * 100) : 0;
+    
+    String healthStatus;
+    Color healthColor;
+    IconData healthIcon;
+    
+    if (savingsRate >= 20) {
+      healthStatus = 'Excellent';
+      healthColor = const Color(0xFF4CAF50);
+      healthIcon = Icons.health_and_safety;
+    } else if (savingsRate >= 10) {
+      healthStatus = 'Good';
+      healthColor = const Color(0xFFFF9800);
+      healthIcon = Icons.check_circle;
+    } else {
+      healthStatus = 'Needs Attention';
+      healthColor = const Color(0xFFE91E63);
+      healthIcon = Icons.warning;
+    }
+    
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                healthIcon,
+                color: healthColor,
+                size: 24,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Financial Health Score',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  children: [
+                    Text(
+                      healthStatus,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: healthColor,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Savings Rate: ${savingsRate.toStringAsFixed(1)}%',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF666666),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  children: [
+                    Text(
+                      '${expenseRatio.toStringAsFixed(1)}%',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFE91E63),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Expense Ratio',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF666666),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMainCTA() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: GestureDetector(
+        onTap: () {
+          context.go('/chat/main');
+        },
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFD700),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFFFD700).withOpacity(0.3),
+                blurRadius: 15,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.chat_bubble_outline,
+                size: 24,
+                color: Colors.black87,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Start New Chat',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black87,
+                  letterSpacing: -0.3,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.3),
+    );
+  }
+}
