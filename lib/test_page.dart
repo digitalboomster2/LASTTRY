@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'core/theme/app_theme.dart'; // Import AppTheme
+import 'shared/widgets/responsive_scaffold.dart'; // Import ResponsiveScaffold
 
-class TestPage extends StatelessWidget {
+class TestPage extends ConsumerWidget {
   const TestPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA), // Light grey background
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return ResponsiveScaffold(
+      backgroundColor: AppTheme.neutral50, // Light grey background
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -26,10 +32,14 @@ class TestPage extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  Icon(
-                    Icons.account_balance_wallet,
-                    size: 48,
-                    color: Colors.yellow[700],
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryYellow,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.savings, color: Colors.white, size: 24),
                   ),
                   const SizedBox(height: 16),
                   const Text(
@@ -49,11 +59,11 @@ class TestPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text(
+                  Text(
                     'App is working!',
                     style: TextStyle(
                       fontSize: 18,
-                      color: Colors.green,
+                      color: AppTheme.primaryGreen,
                       fontWeight: FontWeight.w600,
                     ),
                   ),

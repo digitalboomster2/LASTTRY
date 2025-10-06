@@ -66,12 +66,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       ShellRoute(
         builder: (context, state, child) => HomePage(child: child),
         routes: [
-      // Root route - redirect to splash
-      GoRoute(
-        path: '/',
-        name: 'root',
-        builder: (context, state) => const TestPage(),
-      ),
                 
           // Dashboard Tab
           GoRoute(
