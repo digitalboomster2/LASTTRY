@@ -16,7 +16,6 @@ import '../../features/heal_me/presentation/pages/heal_me_page.dart';
 import '../../features/analyse_me/presentation/pages/analyse_me_page.dart';
 import '../../features/piggy_bank/presentation/pages/piggy_bank_page.dart';
 import '../../test_page.dart';
-import '../../simple_test.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -26,13 +25,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/',
         name: 'root',
-        builder: (context, state) => const SimpleTest(),
+        builder: (context, state) => const SplashPage(),
       ),
             // Splash Screen
       GoRoute(
         path: '/splash',
         name: 'splash',
-        builder: (context, state) => const TestPage(),
+        builder: (context, state) => const SplashPage(),
       ),
       
       // Onboarding
@@ -53,7 +52,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/chat',
         name: 'chat',
-        builder: (context, state) => const TestPage(),
+        builder: (context, state) => const PreChatPage(),
       ),
       
       // Standalone chat page (no navigation bar)
