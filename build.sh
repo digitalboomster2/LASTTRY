@@ -56,9 +56,9 @@ else
     exit 1
 fi
 
-# Build Flutter web app
+# Build Flutter web app with optimizations
 echo "Building Flutter web app..."
-flutter build web --release --base-href / --verbose
+flutter build web --release --base-href / --web-renderer html --dart-define=FLUTTER_WEB_USE_SKIA=false
 
 # Check if build was successful
 if [ $? -eq 0 ]; then

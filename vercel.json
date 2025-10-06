@@ -4,6 +4,23 @@
   "installCommand": "bash install.sh",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
   "cleanUrls": true,
-  "trailingSlash": false
+  "trailingSlash": false,
+  "functions": {
+    "build.sh": {
+      "maxDuration": 300
+    },
+    "install.sh": {
+      "maxDuration": 300
+    }
+  },
+  "builds": [
+    {
+      "src": "build.sh",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "build/web"
+      }
+    }
+  ]
 }
 
